@@ -1,3 +1,4 @@
+import os
 import re
 import uuid
 from contextlib import asynccontextmanager
@@ -6,7 +7,7 @@ from typing import Any
 from urllib.parse import quote
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, File, Form, UploadFile
+from fastapi import FastAPI, File, Form, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, Response
 from gemini_webapi.exceptions import AuthError, GeminiError
@@ -21,6 +22,17 @@ from export_utils import (
 from session import session_manager
 
 load_dotenv()
+
+
+def _allowed_origins() -> list[str]:
+    raw = (os.getenv("ALLOWED_ORIGINS", "") or "").strip()
+    if not raw:
+        return ["http://localhost:3000"]
+    return [origin.strip() for origin in raw.split(",") if origin.strip()]
+
+
+def _api_shared_secret() -> str:
+    return (os.getenv("API_SHARED_SECRET", "") or "").strip()
 
 SYSTEM_RULE = (
     "Reply only in Afaan Oromoo, even if I write in another language. "
@@ -276,11 +288,32 @@ app = FastAPI(title="dubbii-wrapper", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=_allowed_origins(),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.middleware("http")
+async def require_api_secret(request: Request, call_next):
+    # Public health check and CORS preflight must stay open.
+    if request.url.path == "/health" or request.method == "OPTIONS":
+        return await call_next(request)
+
+    expected = _api_shared_secret()
+    provided = (request.headers.get("X-API-Secret") or "").strip()
+    if not expected or provided != expected:
+        return JSONResponse(
+            status_code=401,
+            content={"error": "API secret hin jiru ykn dogoggoraadha."},
+        )
+    return await call_next(request)
+
+
+@app.get("/health")
+async def health_endpoint():
+    return {"ok": True}
 
 
 @app.get("/status")

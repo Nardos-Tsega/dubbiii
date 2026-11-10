@@ -1,10 +1,13 @@
 import { NextResponse } from "next/server";
 
-const PYTHON_STATUS_URL = "http://127.0.0.1:8000/status";
+import { pythonApiHeaders, pythonApiUrl } from "@/lib/python-api";
 
 export async function GET() {
   try {
-    const response = await fetch(PYTHON_STATUS_URL, { cache: "no-store" });
+    const response = await fetch(pythonApiUrl("/status"), {
+      headers: pythonApiHeaders(),
+      cache: "no-store",
+    });
     const data = await response.json().catch(() => ({
       state: "expired",
       last_checked: null,

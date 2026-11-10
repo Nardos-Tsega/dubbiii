@@ -9,6 +9,7 @@ Cookie behavior follows the current gemini-webapi README:
 from __future__ import annotations
 
 import asyncio
+import importlib
 import json
 import os
 import stat
@@ -20,15 +21,28 @@ from pathlib import Path
 from typing import Any, Literal
 
 from dotenv import load_dotenv
+import gemini_webapi.client as gemini_client_mod
+import gemini_webapi.utils as gemini_utils_mod
 from gemini_webapi import GeminiClient
 from gemini_webapi.exceptions import AuthError, GeminiError
-from gemini_webapi.utils import rotate_1psidts as rotate_mod
+
+# utils/__init__.py re-exports rotate_1psidts as a function, which shadows the
+# submodule for normal "import ...rotate_1psidts" — use importlib for the module.
+rotate_mod = importlib.import_module("gemini_webapi.utils.rotate_1psidts")
 
 load_dotenv()
 
 SERVER_DIR = Path(__file__).resolve().parent
-APP_COOKIE_CACHE = SERVER_DIR / ".cookie_cache.json"
 LIB_COOKIE_DIR = SERVER_DIR / "cookie_store"
+
+
+def app_cookie_cache_path() -> Path:
+    """COOKIE_CACHE_PATH from env; default ./.cookie_cache.json under the server dir."""
+    raw = (os.getenv("COOKIE_CACHE_PATH", "./.cookie_cache.json") or "./.cookie_cache.json").strip()
+    path = Path(raw).expanduser()
+    if not path.is_absolute():
+        path = (SERVER_DIR / path).resolve()
+    return path
 
 SessionState = Literal["ok", "reconnecting", "expired"]
 CookieSource = Literal["cache", "env", "browser"]
@@ -70,10 +84,11 @@ class CookiePair:
 
 
 def read_app_cookie_cache() -> CookiePair | None:
-    if not APP_COOKIE_CACHE.is_file():
+    cache_path = app_cookie_cache_path()
+    if not cache_path.is_file():
         return None
     try:
-        data = json.loads(APP_COOKIE_CACHE.read_text(encoding="utf-8"))
+        data = json.loads(cache_path.read_text(encoding="utf-8"))
         psid = str(data.get("psid") or data.get("PSID") or "").strip()
         psidts = str(data.get("psidts") or data.get("PSIDTS") or "").strip()
         if psid:
@@ -85,16 +100,18 @@ def read_app_cookie_cache() -> CookiePair | None:
 
 def write_app_cookie_cache(psid: str, psidts: str) -> None:
     """Persist cookies to our app cache with restrictive permissions. Never logs values."""
+    cache_path = app_cookie_cache_path()
+    cache_path.parent.mkdir(parents=True, exist_ok=True)
     payload = {
         "psid": psid.strip(),
         "psidts": (psidts or "").strip(),
         "updated_at": _utc_now_iso(),
     }
-    tmp = APP_COOKIE_CACHE.with_suffix(".tmp")
+    tmp = cache_path.with_suffix(".tmp")
     tmp.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     _chmod_owner_rw(tmp)
-    tmp.replace(APP_COOKIE_CACHE)
-    _chmod_owner_rw(APP_COOKIE_CACHE)
+    tmp.replace(cache_path)
+    _chmod_owner_rw(cache_path)
 
 
 def read_env_cookies() -> CookiePair | None:
@@ -107,6 +124,9 @@ def read_env_cookies() -> CookiePair | None:
 
 def read_browser_cookies() -> CookiePair | None:
     """Load __Secure-1PSID / __Secure-1PSIDTS via browser-cookie3 from a configured Chrome profile."""
+    if (os.getenv("ENABLE_BROWSER_COOKIES", "") or "").strip().lower() != "true":
+        return None
+
     try:
         import browser_cookie3 as bc3
     except ImportError:
@@ -246,7 +266,11 @@ def install_cookie_save_hook(session: "SessionManager") -> None:
         except Exception as exc:  # noqa: BLE001
             _log(f"App cookie cache sync after refresh failed: {exc}")
 
+    # Patch every binding the library keeps: module global (used by rotate_1psidts),
+    # utils re-export, and client.py's import-time name.
     rotate_mod.save_cookies = hooked  # type: ignore[assignment]
+    gemini_utils_mod.save_cookies = hooked  # type: ignore[assignment]
+    gemini_client_mod.save_cookies = hooked  # type: ignore[assignment]
     rotate_mod._dubbii_save_hooked = True  # type: ignore[attr-defined]
 
 

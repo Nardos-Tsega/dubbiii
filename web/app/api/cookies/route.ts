@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-const PYTHON_COOKIES_URL = "http://127.0.0.1:8000/cookies";
+import { pythonApiHeaders, pythonApiUrl } from "@/lib/python-api";
 
 export async function POST(request: Request) {
   let body: unknown;
@@ -15,9 +15,9 @@ export async function POST(request: Request) {
 
   // Never log request bodies — may contain cookies.
   try {
-    const response = await fetch(PYTHON_COOKIES_URL, {
+    const response = await fetch(pythonApiUrl("/cookies"), {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: pythonApiHeaders({ "Content-Type": "application/json" }),
       body: JSON.stringify(body),
       cache: "no-store",
     });

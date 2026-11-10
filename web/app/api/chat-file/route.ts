@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-const PYTHON_CHAT_FILE_URL = "http://127.0.0.1:8000/chat-file";
+import { pythonApiHeaders, pythonApiUrl } from "@/lib/python-api";
 
 type DuplexRequestInit = RequestInit & { duplex?: "half" };
 
@@ -21,12 +21,11 @@ export async function POST(request: Request) {
   }
 
   try {
-    // Stream the raw multipart body through to Python without buffering the whole upload.
-    const upstream = await fetch(PYTHON_CHAT_FILE_URL, {
+    const upstream = await fetch(pythonApiUrl("/chat-file"), {
       method: "POST",
-      headers: {
+      headers: pythonApiHeaders({
         "content-type": contentType,
-      },
+      }),
       body: request.body,
       duplex: "half",
       cache: "no-store",

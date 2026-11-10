@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
 
-const PYTHON_RESET_URL = "http://127.0.0.1:8000/reset";
+import { pythonApiHeaders, pythonApiUrl } from "@/lib/python-api";
 
 export async function POST() {
   try {
-    const response = await fetch(PYTHON_RESET_URL, {
+    const response = await fetch(pythonApiUrl("/reset"), {
       method: "POST",
+      headers: pythonApiHeaders(),
       cache: "no-store",
     });
 

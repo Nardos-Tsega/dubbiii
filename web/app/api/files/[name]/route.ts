@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 
+import { pythonApiHeaders, pythonApiUrl } from "@/lib/python-api";
+
 type RouteContext = {
   params: Promise<{ name: string }>;
 };
@@ -16,8 +18,11 @@ export async function GET(_request: Request, context: RouteContext) {
 
   try {
     const upstream = await fetch(
-      `http://127.0.0.1:8000/files/${encodeURIComponent(safeName)}`,
-      { cache: "no-store" },
+      pythonApiUrl(`/files/${encodeURIComponent(safeName)}`),
+      {
+        headers: pythonApiHeaders(),
+        cache: "no-store",
+      },
     );
 
     if (!upstream.ok) {

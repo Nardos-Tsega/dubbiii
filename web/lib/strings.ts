@@ -83,6 +83,17 @@ export const strings = {
   sessionRefreshing: "Haaromsuu...",
   sessionRefreshOk: "Session haaromfame.",
   sessionRefreshFailed: "Haaromsuun hin milkoofne. Mee qabxii sirrii ta'an yaali.",
+
+  loginTitle: "Seeni",
+  loginSubtitle: "Jecha iccitii galchiitii itti fufi",
+  loginPasswordLabel: "Jecha iccitii",
+  loginSubmit: "Seeni",
+  loginSubmitting: "Odeeffannoo mirkaneessaa...",
+  loginFailed: "Jecha iccitii dogoggoraadha.",
+  loginInvalid: "Gaaffiin seensaa sirrii miti.",
+  loginRateLimited:
+    "Yaalii baay'ee goote. Mee daqiiqaa 15 booda irra deebi'ii yaali.",
+  loginConfigError: "Seensisni sirreeffamee hin jiru. Mee serveera mirkaneessi.",
 } as const;
 
 export type Strings = typeof strings;

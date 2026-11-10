@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-const PYTHON_EXPORT_URL = "http://127.0.0.1:8000/export";
+import { pythonApiHeaders, pythonApiUrl } from "@/lib/python-api";
 
 type DuplexRequestInit = RequestInit & { duplex?: "half" };
 
@@ -13,12 +13,12 @@ export async function POST(request: Request) {
   }
 
   try {
-    const upstream = await fetch(PYTHON_EXPORT_URL, {
+    const upstream = await fetch(pythonApiUrl("/export"), {
       method: "POST",
-      headers: {
+      headers: pythonApiHeaders({
         "content-type":
           request.headers.get("content-type") || "application/json",
-      },
+      }),
       body: request.body,
       duplex: "half",
       cache: "no-store",
