@@ -1,0 +1,8 @@
+.env
+venv
+node_modules
+.next
+__pycache__
+uploads
+.cookie_cache.json
+cookie_store

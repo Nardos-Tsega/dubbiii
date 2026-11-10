@@ -1,0 +1,8 @@
+gemini-webapi
+fastapi
+uvicorn
+python-dotenv
+python-multipart
+python-docx
+fpdf2
+browser-cookie3
